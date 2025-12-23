@@ -1,0 +1,176 @@
+version: '3.8'
+
+services:
+  # 基础设施服务
+  mysql:
+    image: mysql:8.0
+    container_name: trading-mysql-prod
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: trading_system
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: trading-zookeeper-prod
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: trading-kafka-prod
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    restart: unless-stopped
+
+  # 微服务
+  gateway:
+    image: localhost:5000/trading-system-gateway:latest
+    container_name: trading-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      - eureka
+    restart: unless-stopped
+
+  account-service:
+    image: localhost:5000/trading-system-account-service:latest
+    container_name: trading-account-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/trading_account?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - SPRING_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx1g -Xms512m
+    depends_on:
+      - mysql
+      - redis
+      - eureka
+    restart: unless-stopped
+
+  order-service:
+    image: localhost:5000/trading-system-order-service:latest
+    container_name: trading-order-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/trading_order?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - SPRING_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx1g -Xms512m
+    depends_on:
+      - mysql
+      - redis
+      - eureka
+    restart: unless-stopped
+
+  matching-engine:
+    image: localhost:5000/trading-system-matching-engine:latest
+    container_name: trading-matching-engine
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP-SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx1g -Xms512m
+    depends_on:
+      - redis
+      - kafka
+      - eureka
+    restart: unless-stopped
+
+  market-data-service:
+    image: localhost:5000/trading-system-market-data-service:latest
+    container_name: trading-market-data-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP-SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx1g -Xms512m
+    depends_on:
+      - redis
+      - kafka
+      - eureka
+    restart: unless-stopped
+
+  risk-service:
+    image: localhost:5000/trading-system-risk-service:latest
+    container_name: trading-risk-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      - redis
+      - eureka
+    restart: unless-stopped
+
+  notification-service:
+    image: localhost:5000/trading-system-notification-service:latest
+    container_name: trading-notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_KAFKA_CONSUMER_BOOTSTRAP-SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka:8761/eureka
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    depends_on:
+      - kafka
+      - eureka
+    restart: unless-stopped
+
+  # 服务注册中心
+  eureka:
+    image: springcloud/eureka:latest
+    container_name: trading-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - JAVA_OPTS=-Xmx256m -Xms128m
+    restart: unless-stopped
+
+volumes:
+  mysql_data_prod:
+  redis_data_prod:

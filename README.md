@@ -14,8 +14,14 @@ trading-system/
 ├── market-data-service/       # 市场数据服务
 ├── risk-service/              # 风控服务
 ├── notification-service/      # 通知服务
-├── docker-compose.yml         # 容器编排配置
-└── pom.xml                    # 根项目配置
+├── scripts/                   # 系统管理脚本
+├── docker-compose.yml         # 开发环境容器编排
+├── docker-compose-prod.yml    # 生产环境容器编排
+├── start-services.bat         # 一键启动微服务脚本
+├── build-docker-images.bat    # 构建Docker镜像脚本
+├── deploy-docker.bat          # Docker部署脚本
+├── pom.xml                    # 根项目配置
+└── README.md                  # 项目说明文档
 ```
 
 ## 技术栈
@@ -36,6 +42,20 @@ trading-system/
 - **Ant Design 5.x** - UI组件库
 - **ECharts 5.x** - 数据可视化
 - **Socket.IO** - 实时通信
+
+## 系统管理脚本
+
+项目提供了多个管理脚本以简化开发和部署流程：
+
+### 开发环境脚本
+- `scripts/start-dev.bat` - 启动开发环境（所有服务在单独窗口中运行）
+- `scripts/stop-services.bat` - 停止所有服务
+- `scripts/health-check.bat` - 检查服务运行状态
+
+### 构建和部署脚本
+- `scripts/build-images.bat` - 构建所有服务的Docker镜像
+- `scripts/deploy-prod.bat` - 部署到生产环境
+- `scripts/manage-services.bat` - 统一管理控制台
 
 ## 模块说明
 
@@ -127,7 +147,23 @@ trading-system/
 - Redis 7.x
 - Kafka 3.x
 
-### 启动步骤
+### 使用管理控制台（推荐）
+
+1. 克隆项目
+```bash
+git clone <repository-url>
+cd trading-system
+```
+
+2. 运行管理控制台
+```bash
+cd scripts
+manage-services.bat
+```
+
+3. 选择选项启动开发环境或部署到生产环境
+
+### 手动启动步骤
 
 1. 克隆项目
 ```bash
@@ -147,17 +183,8 @@ mvn clean install
 
 4. 启动各服务（按顺序）
 ```bash
-# 启动服务发现（Eureka）
-cd eureka-server && mvn spring-boot:run
-
-# 启动各微服务
-cd gateway && mvn spring-boot:run
-cd account-service && mvn spring-boot:run
-cd order-service && mvn spring-boot:run
-cd matching-engine && mvn spring-boot:run
-cd market-data-service && mvn spring-boot:run
-cd risk-service && mvn spring-boot:run
-cd notification-service && mvn spring-boot:run
+# 使用脚本启动开发环境
+scripts/start-dev.bat
 ```
 
 ### API端点
@@ -206,31 +233,52 @@ cd notification-service && mvn spring-boot:run
 
 ## 部署方案
 
-### Docker部署
+### 开发环境部署
+```bash
+# 使用管理控制台
+scripts/manage-services.bat
+# 选择选项 1 启动开发环境
+```
+
+### 生产环境部署
+```bash
+# 使用管理控制台
+scripts/manage-services.bat
+# 选择选项 2 部署到生产环境
+```
+
+或直接运行部署脚本：
+```bash
+scripts/deploy-prod.bat
+```
+
+### 手动Docker部署
 ```bash
 # 构建Docker镜像
-mvn spring-boot:build-image -pl gateway
-mvn spring-boot:build-image -pl account-service
-# ... 为每个服务构建镜像
+scripts/build-images.bat
 
 # 使用Docker Compose启动
 docker-compose -f docker-compose-prod.yml up -d
 ```
 
-### Kubernetes部署
-```bash
-kubectl apply -f k8s/
-```
-
 ## 监控与运维
 
 ### 健康检查
-- 各服务提供 `/actuator/health` 端点
-- 支持Prometheus指标收集
+```bash
+scripts/health-check.bat
+```
 
-### 日志管理
-- 使用SLF4J + Logback
-- 支持ELK栈日志收集
+### 查看日志
+```bash
+# 使用管理控制台
+scripts/manage-services.bat
+# 选择选项 6 查看日志
+```
+
+### 停止服务
+```bash
+scripts/stop-services.bat
+```
 
 ## 安全性
 
