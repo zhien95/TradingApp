@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # 数据库服务
   mysql:
     image: mysql:8.0
     container_name: trading-mysql
@@ -13,7 +10,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  # Redis服务
   redis:
     image: redis:7-alpine
     container_name: trading-redis
@@ -22,38 +18,58 @@ services:
     volumes:
       - redis_data:/data
 
-  # Kafka服务
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: trading-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+# zookeeper service removed for KRaft mode
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     container_name: trading-kafka
     ports:
       - "9092:9092"
+      - "29092:29092"
+      - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://trading-kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@trading-kafka:9093"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 9223372036854775807
+      KAFKA_LOG_FLUSH_OFFSET_CHECKPOINT_INTERVAL_MS: 900000
+      KAFKA_LOG_FLUSH_INVOCATION_DELAY_MS: 900000
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      CLUSTER_ID: 4L6F6m7cRzqAxT7N2IexKg
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    command: [
+      "sh", "-c", 
+      "/etc/confluent/docker/run ", "&&", 
+      "kafka-storage.sh format --config /etc/kafka/server.properties --cluster-id 4L6F6m7cRzqAxT7N2IexKg"
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  # Eureka服务注册中心
-  eureka-server:
-    image: openjdk:21-jdk
-    container_name: eureka-server
+  eureka:
+    build: ./eureka-server
+    container_name: trading-eureka
     ports:
       - "8761:8761"
-    command: |
-      bash -c "
-        java -jar /app/eureka-server.jar
-      "
-    environment:
-      - JAVA_OPTS=-Xmx512m -Xms256m
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mysql_data:
   redis_data:
+  kafka_data:
