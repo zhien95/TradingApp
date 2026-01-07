@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "namespace": "com.trading.common.avro",
+  "name": "RiskAlert",
+  "doc": "风险警报信息",
+  "fields": [
+    {"name": "seqId", "type": "long", "doc": "消息序列号"},
+    {"name": "alertId", "type": "string", "doc": "警报ID"},
+    {"name": "userId", "type": "string", "doc": "用户ID"},
+    {"name": "riskType", "type": {
+      "type": "enum",
+      "name": "RiskType",
+      "symbols": ["CREDIT", "MARKET", "LIQUIDITY", "OPERATIONAL", "COMPLIANCE"]
+    }, "doc": "风险类型"},
+    {"name": "severity", "type": {
+      "type": "enum",
+      "name": "RiskSeverity",
+      "symbols": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    }, "doc": "严重程度"},
+    {"name": "score", "type": "double", "doc": "风险评分"},
+    {"name": "timestamp", "type": "long", "doc": "时间戳"},
+    {"name": "description", "type": "string", "doc": "描述信息"},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}

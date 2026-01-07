@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "namespace": "com.trading.common.avro",
+  "name": "PriceUpdate",
+  "doc": "市场价格更新信息",
+  "fields": [
+    {"name": "seqId", "type": "long", "doc": "消息序列号"},
+    {"name": "symbol", "type": "string", "doc": "交易标的"},
+    {"name": "price", "type": "double", "doc": "当前价格"},
+    {"name": "timestamp", "type": "long", "doc": "更新时间戳"},
+    {"name": "source", "type": "string", "doc": "数据源"},
+    {"name": "bidPrice", "type": "double", "doc": "买价"},
+    {"name": "askPrice", "type": "double", "doc": "卖价"},
+    {"name": "volume", "type": "double", "doc": "成交量"},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}

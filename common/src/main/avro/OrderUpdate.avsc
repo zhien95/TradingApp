@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "namespace": "com.trading.common.avro",
+  "name": "OrderUpdate",
+  "doc": "订单状态更新信息",
+  "fields": [
+    {"name": "seqId", "type": "long", "doc": "消息序列号"},
+    {"name": "orderId", "type": "string", "doc": "订单ID"},
+    {"name": "userId", "type": "string", "doc": "用户ID"},
+    {"name": "symbol", "type": "string", "doc": "交易标的"},
+    {"name": "orderType", "type": {
+      "type": "enum",
+      "name": "OrderType",
+      "symbols": ["MARKET", "LIMIT", "STOP", "STOP_LIMIT"]
+    }, "doc": "订单类型"},
+    {"name": "side", "type": {
+      "type": "enum",
+      "name": "OrderSide",
+      "symbols": ["BUY", "SELL"]
+    }, "doc": "买卖方向"},
+    {"name": "quantity", "type": "double", "doc": "数量"},
+    {"name": "price", "type": "double", "doc": "价格"},
+    {"name": "status", "type": {
+      "type": "enum",
+      "name": "OrderStatus",
+      "symbols": ["PENDING", "PLACED", "PARTIAL_FILLED", "FILLED", "CANCELLED", "REJECTED"]
+    }, "doc": "订单状态"},
+    {"name": "timestamp", "type": "long", "doc": "时间戳"},
+    {"name": "filledQuantity", "type": "double", "default": 0.0, "doc": "已成交数量"},
+    {"name": "averageFillPrice", "type": "double", "default": 0.0, "doc": "平均成交价格"},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "namespace": "com.trading.common.avro",
+  "name": "Transaction",
+  "doc": "通用交易信息记录",
+  "fields": [
+    {"name": "seqId", "type": "long", "doc": "消息序列号"},
+    {"name": "transactionId", "type": "string", "doc": "交易唯一标识"},
+    {"name": "userId", "type": "string", "doc": "用户ID"},
+    {"name": "amount", "type": "double", "doc": "交易金额"},
+    {"name": "currency", "type": "string", "doc": "货币类型"},
+    {"name": "transactionType", "type": {
+      "type": "enum",
+      "name": "TransactionType",
+      "symbols": ["DEBIT", "CREDIT", "TRANSFER", "PAYMENT", "WITHDRAWAL", "DEPOSIT"]
+    }, "doc": "交易类型"},
+    {"name": "status", "type": {
+      "type": "enum",
+      "name": "TransactionStatus",
+      "symbols": ["PENDING", "COMPLETED", "FAILED", "CANCELLED", "PROCESSING"]
+    }, "doc": "交易状态"},
+    {"name": "timestamp", "type": "long", "doc": "时间戳"},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}
