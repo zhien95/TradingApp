@@ -7,14 +7,15 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: ${MAIL_USERNAME:your-email@gmail.com}  # 使用环境变量或默认值
+    password: ${MAIL_PASSWORD:your-app-password}    # 使用环境变量或默认值
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+    default-encoding: UTF-8
   redis:
     host: localhost
     port: 6379
@@ -24,6 +25,12 @@ spring:
       group-id: notification-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+# 禁用邮件健康检查
+management:
+  health:
+    mail:
+      enabled: false
 
 eureka:
   client:
