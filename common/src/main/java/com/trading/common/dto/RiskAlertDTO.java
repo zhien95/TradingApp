@@ -2,13 +2,13 @@ package com.trading.common.dto;
 
 import com.trading.common.enums.RiskSeverity;
 import com.trading.common.enums.RiskType;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Positive;
 import java.util.Map;
 
 /**
