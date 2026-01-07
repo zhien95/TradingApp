@@ -5,13 +5,13 @@ spring:
   application:
     name: account-service
   datasource:
-    url: jdbc:mysql://localhost:3306/trading_account?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/trading_account?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: password
+    password: rootpassword
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
   redis:
     host: localhost
