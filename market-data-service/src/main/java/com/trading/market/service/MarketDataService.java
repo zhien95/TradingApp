@@ -2,6 +2,7 @@ package com.trading.market.service;
 
 import com.trading.market.dto.MarketDataDTO;
 import com.trading.market.dto.MarketSymbolDTO;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,4 +21,8 @@ public interface MarketDataService {
     void addSymbol(MarketSymbolDTO symbolDTO);
 
     boolean symbolExists(String symbol);
+
+    SseEmitter streamMarketData(String symbol);
+
+    SseEmitter streamAllMarketData();
 }

@@ -1,5 +1,6 @@
 package com.trading.market.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trading.common.avro.PriceUpdate;
 import com.trading.market.dto.MarketDataDTO;
 import com.trading.market.dto.MarketSymbolDTO;
@@ -11,11 +12,15 @@ import com.trading.market.service.MarketDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +31,9 @@ public class MarketDataServiceImpl implements MarketDataService {
     private final MarketDataRepository marketDataRepository;
     private final MarketSymbolRepository marketSymbolRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final List<SseEmitter> allEmitters = new CopyOnWriteArrayList<>();
+    private final List<SseEmitter> symbolSpecificEmitters = new CopyOnWriteArrayList<>();
 
     @Override
     @Transactional(readOnly = true)
@@ -84,7 +92,11 @@ public class MarketDataServiceImpl implements MarketDataService {
         // 发送价格更新到Kafka
         sendPriceUpdateToKafka(savedData);
 
-        return convertToDTO(savedData);
+        // Send market update to SSE subscribers
+        MarketDataDTO savedDto = convertToDTO(savedData);
+        sendMarketUpdateToSubscribers(savedDto);
+
+        return savedDto;
     }
 
     @Override
@@ -167,5 +179,87 @@ public class MarketDataServiceImpl implements MarketDataService {
         } catch (Exception e) {
             log.error("Error sending price update to Kafka", e);
         }
+    }
+
+    @Override
+    public SseEmitter streamMarketData(String symbol) {
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        symbolSpecificEmitters.add(emitter);
+
+        // Send initial data
+        MarketDataDTO initialData = getCurrentPrice(symbol);
+        if (initialData != null) {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("market-update")
+                        .data(initialData));
+            } catch (IOException e) {
+                log.error("Error sending initial market data", e);
+            }
+        }
+
+        // Clean up emitter when done
+        emitter.onCompletion(() -> symbolSpecificEmitters.remove(emitter));
+        emitter.onTimeout(() -> symbolSpecificEmitters.remove(emitter));
+        emitter.onError((ex) -> symbolSpecificEmitters.remove(emitter));
+
+        return emitter;
+    }
+
+    @Override
+    public SseEmitter streamAllMarketData() {
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        allEmitters.add(emitter);
+
+        // Send initial data for all symbols
+        List<MarketSymbolDTO> allSymbols = getAllSymbols();
+        for (MarketSymbolDTO symbol : allSymbols) {
+            MarketDataDTO initialData = getCurrentPrice(symbol.getSymbol());
+            if (initialData != null) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name("market-update")
+                            .data(initialData));
+                } catch (IOException e) {
+                    log.error("Error sending initial market data", e);
+                }
+            }
+        }
+
+        // Clean up emitter when done
+        emitter.onCompletion(() -> allEmitters.remove(emitter));
+        emitter.onTimeout(() -> allEmitters.remove(emitter));
+        emitter.onError((ex) -> allEmitters.remove(emitter));
+
+        return emitter;
+    }
+
+    @Async
+    public void sendMarketUpdateToSubscribers(MarketDataDTO marketData) {
+        // Send to symbol-specific emitters
+        symbolSpecificEmitters.removeIf(emitter -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("market-update")
+                        .data(marketData));
+                return false; // Don't remove unless there's an error
+            } catch (IOException e) {
+                log.error("Error sending market update to symbol-specific emitter", e);
+                return true; // Remove this emitter
+            }
+        });
+
+        // Send to all emitters
+        allEmitters.removeIf(emitter -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("market-update")
+                        .data(marketData));
+                return false; // Don't remove unless there's an error
+            } catch (IOException e) {
+                log.error("Error sending market update to all emitter", e);
+                return true; // Remove this emitter
+            }
+        });
     }
 }

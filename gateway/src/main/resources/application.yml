@@ -18,7 +18,7 @@ spring:
         - id: market-data-service
           uri: lb://market-data-service
           predicates:
-            - Path=/api/market/**
+            - Path=/api/market-data/**
         - id: matching-engine
           uri: lb://matching-engine
           predicates:

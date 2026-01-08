@@ -5,8 +5,10 @@ import com.trading.market.dto.MarketSymbolDTO;
 import com.trading.market.service.MarketDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -68,5 +70,17 @@ public class MarketDataController {
         log.debug("Received request to check if symbol exists: {}", symbol);
         boolean exists = marketDataService.symbolExists(symbol);
         return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping(value = "/stream/{symbol}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMarketData(@PathVariable String symbol) {
+        log.debug("Received request to stream market data for symbol: {}", symbol);
+        return marketDataService.streamMarketData(symbol);
+    }
+
+    @GetMapping(value = "/stream-all", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamAllMarketData() {
+        log.debug("Received request to stream all market data");
+        return marketDataService.streamAllMarketData();
     }
 }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Real-time Market Data Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .market-data {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+        }
+
+        .symbol {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .price {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .bid-ask {
+            color: #28a745;
+        }
+
+        .volume {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Real-time Market Data Streaming</h1>
+
+    <div class="controls">
+        <input id="symbolInput" placeholder="Enter symbol (e.g. AAPL)" type="text" value="AAPL">
+        <button id="connectBtn">Connect to Symbol Stream</button>
+        <button id="connectAllBtn">Connect to All Streams</button>
+        <button disabled id="disconnectBtn">Disconnect</button>
+    </div>
+
+    <div class="status disconnected" id="status">Disconnected</div>
+
+    <div id="marketDataContainer">
+        <p>Connect to start receiving real-time market data updates...</p>
+    </div>
+</div>
+
+<script>
+    let eventSource = null;
+    let currentStreamType = null;
+    let currentSymbol = null;
+
+    document.getElementById('connectBtn').addEventListener('click', connectToSymbolStream);
+    document.getElementById('connectAllBtn').addEventListener('click', connectToAllStream);
+    document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+
+    function connectToSymbolStream() {
+        const symbol = document.getElementById('symbolInput').value.trim();
+        if (!symbol) {
+            alert('Please enter a symbol');
+            return;
+        }
+
+        disconnect();
+
+        currentStreamType = 'symbol';
+        currentSymbol = symbol;
+
+        const url = `/api/market-data/stream/${symbol}`;
+        eventSource = new EventSource(url);
+
+        setupEventHandlers();
+    }
+
+    function connectToAllStream() {
+        disconnect();
+
+        currentStreamType = 'all';
+
+        const url = '/api/market-data/stream-all';
+        eventSource = new EventSource(url);
+
+        setupEventHandlers();
+    }
+
+    function setupEventHandlers() {
+        eventSource.onopen = function (event) {
+            console.log('Connected to market data stream');
+            updateStatus('Connected', true);
+            document.getElementById('disconnectBtn').disabled = false;
+            document.getElementById('connectBtn').disabled = true;
+            document.getElementById('connectAllBtn').disabled = true;
+        };
+
+        eventSource.addEventListener('market-update', function (event) {
+            const data = JSON.parse(event.data);
+            displayMarketData(data);
+        });
+
+        eventSource.onerror = function (event) {
+            console.error('Error with market data stream:', event);
+            updateStatus('Connection Error - Reconnecting...', false);
+        };
+    }
+
+    function disconnect() {
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+
+        currentStreamType = null;
+        currentSymbol = null;
+
+        updateStatus('Disconnected', false);
+        document.getElementById('disconnectBtn').disabled = true;
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('connectAllBtn').disabled = false;
+    }
+
+    function updateStatus(message, isConnected) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+    }
+
+    function displayMarketData(data) {
+        const container = document.getElementById('marketDataContainer');
+
+        // Create a new market data element
+        const marketDataDiv = document.createElement('div');
+        marketDataDiv.className = 'market-data';
+
+        marketDataDiv.innerHTML = `
+                <div><span class="symbol">${data.symbol}</span></div>
+                <div class="price">$${data.price ? parseFloat(data.price).toFixed(2) : 'N/A'}</div>
+                <div class="bid-ask">Bid: $${data.bidPrice ? parseFloat(data.bidPrice).toFixed(2) : 'N/A'} | Ask: $${data.askPrice ? parseFloat(data.askPrice).toFixed(2) : 'N/A'}</div>
+                <div class="volume">Volume: ${data.volume || 'N/A'}</div>
+                <div class="timestamp">${new Date(data.timestamp).toLocaleString()}</div>
+            `;
+
+        // Add to the top of the container
+        if (container.firstChild) {
+            container.insertBefore(marketDataDiv, container.firstChild);
+        } else {
+            container.appendChild(marketDataDiv);
+        }
+
+        // Limit to 20 items to prevent memory issues
+        if (container.children.length > 20) {
+            container.removeChild(container.lastChild);
+        }
+    }
+</script>
+</body>
+</html>
